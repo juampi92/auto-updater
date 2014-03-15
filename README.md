@@ -40,7 +40,8 @@ With [npm](http://npmjs.org) do:
 
  * `on ( event, callback )` Sets the events
 		
- * `checkDependencies()` Return bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
+ * `checkDependencies()` Returns bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
+ * `diffDependencies()` Returns an array of dependencies (only the names) that dont match
 
  * `forceCheck ()` Compares the two versions. Triggers: 'git-clone','check-up-to-date','check-out-dated'
  * `forceDownloadUpdate()` Downloads the update. Triggers: 'update-downloaded','update-not-installed','download-*'

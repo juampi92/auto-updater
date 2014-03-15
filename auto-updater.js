@@ -23,6 +23,7 @@
 		on ( event, callback )		// Sets the events
 		
 		checkDependencies()			// Return bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
+		diffDependencies()			// Returns an array of dependencies (only the names) that dont match
 
 		forceCheck ()
 		forceDownloadUpdate()
@@ -210,15 +211,22 @@ module.exports = function( opciones ){
 			if ( this.jsons.client != undefined && this.jsons.remote != undefined ) // ret undefined. No idea
 				if ( this.jsons.client.dependencies.length != this.jsons.remote.dependencies.length ) this.cache.dependencies = false;
 				else {
+					bool = true;
+					this.cache.dependencies_diff = new Array();
 					for ( key in this.jsons.remote.dependencies ) // Itero sobre las remotas. Si tengo demás en cliente, no es critico
 						if ( this.jsons.remote.dependencies[key] != this.jsons.client.dependencies[key] ) { // Si no existe, tmb error
-							this.cache.dependencies = false;
-							return false;
+							this.cache.dependencies_diff.push(key); // Log the diff
+							bool = false;
 						};
-					this.cache.dependencies = true;
+					this.cache.dependencies = bool;
 				}
 		}		
 		return this.cache.dependencies;
+	};
+
+	AutoUpdater.diffDependencies = function(){
+		if ( this.cache.dependencies === undefined ) this.checkDependencies();
+		return this.cache.dependencies_diff;
 	};
 
 	// Run:
