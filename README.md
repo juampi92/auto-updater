@@ -31,11 +31,13 @@ With [npm](http://npmjs.org) do:
 # Public Methods:
 
  * `init ( opc )`
- * * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
- * * `async: true` Currently not sync supported.
- * * `silent: false` Does not trigger events
- * * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
- ** `check_git: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+   * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
+   * `async: true` Currently not sync supported.
+   * `silent: false` Does not trigger events
+   * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
+   * `check_git: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+
+
  * `on ( event, callback )`
 
 
