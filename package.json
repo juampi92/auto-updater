@@ -1,0 +1,23 @@
+{
+  "name": "auto-updater",
+  "description": "Automaticly updates your client version when is outdated by the repository",
+  "version": "0.0.1",
+  "author": {
+    "name" : "@Juampi_92",
+    "url" : "https://github.com/juampi92"
+  },
+  "main": "./auto-updater",
+  "dependencies": {
+    "adm-zip" : "*"
+  },
+  "keywords": [ "auto-updater","automatic","auto","update","updater" ],
+  "bugs": "https://github.com/juampi92/auto-updater/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juampi92/auto-updater.git"
+  },
+  "license" : "GPL-2.0",
+  "engines": {
+    "node": "*"
+  }
+}
