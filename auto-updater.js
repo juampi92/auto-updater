@@ -89,7 +89,7 @@ module.exports = function( opciones ){
 		var zip = new admzip(this.updateName);
 	    var zipEntries = zip.getEntries(); // an array of ZipEntry records
 
-	    zip.extractEntryTo(zipEntries[0],'./TMP',false,true);
+	    zip.extractEntryTo(zipEntries[0],'./',false,true);
 	    fs.unlinkSync(this.updateName); // delete installed update.
 
 	    this._callBack('extracted');
