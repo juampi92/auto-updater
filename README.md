@@ -13,6 +13,7 @@ With [npm](http://npmjs.org) do:
  * Compares local version with remote version.
  * If versions dont match, it downloads the repository.
  * It extracts the repository, overwriting the modifies files.
+ * Compares local dependencies with remote dependencies and tells if they don't match.
 
 # Events
 
@@ -37,9 +38,9 @@ With [npm](http://npmjs.org) do:
    * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
    * `check_git: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
 
-
- * `on ( event, callback )`
-
+ * `on ( event, callback )` Sets the events
+		
+ * `checkDependencies()` Return bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
 
  * `forceCheck ()` Compares the two versions. Triggers: 'git-clone','check-up-to-date','check-out-dated'
  * `forceDownloadUpdate()` Downloads the update. Triggers: 'update-downloaded','update-not-installed','download-*'
@@ -89,6 +90,7 @@ That segment must be added to the proyect (local). It is critical that the packa
 	});
 	autoupdater.on('extracted',function(){
 	  console.log("Update extracted successfully!");
+	  console.log("RESTART THE APP!");
 	});
 	autoupdater.on('download-start',function(name){
 	  console.log("Starting downloading: " + name);

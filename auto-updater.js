@@ -19,7 +19,11 @@
 			silent: false			// Does not trigger events
 			autoupdate: false		// if true, all stages run one after the other. else, force stages with public methods
 			check_git: true			// Checks if the .git folder exists, so its a dev and doesnt download the proyect.
-		on ( event, callback )
+		
+		on ( event, callback )		// Sets the events
+		
+		checkDependencies()			// Return bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
+
 		forceCheck ()
 		forceDownloadUpdate()
 		forceExtract()
@@ -60,102 +64,111 @@ module.exports = function( opciones ){
 		var self = this;
 
 		// CheckGit
-		if ( this.opc.check_git && this.checkGit() ) return;
+		if ( this.opc.check_git && this._checkGit() ) return;
 
-		this.loadClientJson();
+		this._loadClientJson();
 	};
 
-	AutoUpdater.checkGit = function(){
-		if ( this.cache.git === undefined ) {
-			this.cache.git = fs.existsSync(".git");
-			if ( this.cache.git === true ) this.callBack('git-clone');
-		}
-		return this.cache.git;
-	}
+	AutoUpdater.forceDownloadUpdate = function(){
+		var self = this;
+		this._remoteDownloadUpdate( this.updateName , { host:'codeload.github.com' , path:this.jsons.client["auto-updater"].repo + '/zip/' + this.jsons.client["auto-updater"].branch },
+			function(existed){
+				if ( existed === true )
+					self._callBack('update-not-installed');
+				else
+					self._callBack('update-downloaded');
+				
+				if ( self.opc.autoupdate ) self.forceExtract();
+			});
+	};
+
+	AutoUpdater.forceExtract = function() {
+		var admzip = require('adm-zip');
+
+		var zip = new admzip(this.updateName);
+	    var zipEntries = zip.getEntries(); // an array of ZipEntry records
+
+	    zip.extractEntryTo(zipEntries[0],'./TMP',false,true);
+	    fs.unlinkSync(this.updateName); // delete installed update.
+
+	    this._callBack('extracted');
+	    this._callBack('end');
+	};
 
 	AutoUpdater.on = function( evento , callback ){
 		if ( this.opc.async ) this.eventCallbacks[evento] = callback;
 	};
 
-	AutoUpdater.loadClientJson = function(){
+	AutoUpdater._checkGit = function(){
+		if ( this.cache.git === undefined ) {
+			this.cache.git = fs.existsSync(".git");
+			if ( this.cache.git === true ) this._callBack('git-clone');
+		}
+		return this.cache.git;
+	};
+
+	AutoUpdater._loadClientJson = function(){
 		var path = this.opc.pathToJson + "./package.json",
 			self = this;
 		
 		if ( ! this.opc.async ) { // Sync
 			//console.log("Syncrono");
 			this.jsons.client = JSON.parse(fs.readFileSync(path));
-			this.loadRemoteJson();
+			this._loadRemoteJson();
 		} else { // Async
 			//console.log("Asyncrono");
 			fs.readFile(path, function (err, data) {
 				if (err) throw err;
 				self.jsons.client = JSON.parse(data);
-				self.loadRemoteJson();
+				self._loadRemoteJson();
 			});
 		}
 	};
 
-	AutoUpdater.loadRemoteJson = function(){
+	AutoUpdater._loadRemoteJson = function(){
 		var self = this,
 			path = this.jsons.client["auto-updater"].repo + '/' + this.jsons.client["auto-updater"].branch + '/' + this.opc.pathToJson + 'package.json' ;
 
-		this.remoteDownloader({host:'raw.github.com',path:path},function(data){
+		this._remoteDownloader({host:'raw.github.com',path:path},function(data){
 			self.jsons.remote = JSON.parse(data);
 			self.updateName = self.update_dest + "-" + self.jsons.remote.version + '.zip';
-			self.loaded();
+			self._loaded();
 		});
-		//console.log(this.jsons.client);
 	};
 
-	AutoUpdater.loaded = function(){
+	AutoUpdater._loaded = function(){
 		if ( this.jsons.client.version == this.jsons.remote.version ) {
-			this.callBack('check-up-to-date',this.jsons.remote.version);
-			this.callBack('end');
-		} else
-			this.callBack('check-out-dated',this.jsons.client.version,this.jsons.remote.version);
-
-		if ( this.opc.autoupdate ) this.forceDownloadUpdate();		
+			this._callBack('check-up-to-date',this.jsons.remote.version);
+			this._callBack('end');
+		} else {
+			this._callBack('check-out-dated',this.jsons.client.version,this.jsons.remote.version);
+			if ( this.opc.autoupdate ) this.forceDownloadUpdate();
+		}
 	};
 
-	AutoUpdater.forceDownloadUpdate = function(){
-		var self = this;
-		this.remoteDownloadUpdate( this.updateName , { host:'codeload.github.com' , path:this.jsons.client["auto-updater"].repo + '/zip/' + this.jsons.client["auto-updater"].branch },
-			function(existed){
-				if ( existed === true )
-					self.callBack('update-not-installed');
-				else
-					self.callBack('update-downloaded');
-				
-				if ( self.opc.autoupdate ) self.forceExtract();
-			});
-	};
-
-	AutoUpdater.callBack = function(evnt , p1,p2){
+	AutoUpdater._callBack = function(evnt , p1,p2){
 		if ( this.opc.silent ) return;
 		var evento = this.eventCallbacks[evnt];
 		if ( evento != null && evento != undefined ) evento(p1,p2);
 	};
 
-	AutoUpdater.remoteDownloader = function(opc,callback){
+	AutoUpdater._remoteDownloader = function(opc,callback){
 		var self = this;
 
 		if ( opc.host == null || opc.host == undefined ) return;
 		if ( opc.path == null || opc.path == undefined ) return;
 		opc.method = ( opc.method == null || opc.method == undefined ) ? 'GET' : opc.method;
 		
-
-		console.log(opc.host + opc.path);
-
 		var reqGet = https.request(opc, function(res) {
 			data = "";
 			res.on('data', function(d) { data = data + d; });
 			res.on('end',function(){ callback(data); });
 		});
 		reqGet.end();
-		reqGet.on('error', function(e) { self.callBack('download-error',e); });
+		reqGet.on('error', function(e) { self._callBack('download-error',e); });
 	};
 
-	AutoUpdater.remoteDownloadUpdate = function( name, opc, callback ){
+	AutoUpdater._remoteDownloadUpdate = function( name, opc, callback ){
 		var self = this;
 		
 		// Ya tengo el update. Falta instalarlo.
@@ -168,7 +181,7 @@ module.exports = function( opciones ){
 		var reqGet = https.get(opc, function(res) {
 			if ( fs.existsSync("_"+name)) fs.unlinkSync("_"+name); // Empiezo denuevo.
 		    
-			self.callBack('download-start',name);
+			self._callBack('download-start',name);
 
 		    var file = fs.createWriteStream("_"+name),
 		    	len = parseInt(res.headers['content-length'], 10),
@@ -177,9 +190,10 @@ module.exports = function( opciones ){
 		    res.on('data', function(chunk) {
 		    		file.write(chunk);
 		    		current += chunk.length;
-		    		self.callBack('download-update',name,( 100.0 * (current/len) ).toFixed(2));
+		    		perc = ( 100.0 * (current/len) ).toFixed(2);
+		    		self._callBack('download-update',name,perc);
 		        }).on('end', function() {
-		        	self.callBack('download-end',name);
+		        	self._callBack('download-end',name);
 		        	
 		        	file.end();
 		        	fs.renameSync("_"+name, name);
@@ -188,23 +202,26 @@ module.exports = function( opciones ){
 		            callback();
 		        });
 		});
-		reqGet.on('error', function(e) { self.callBack('download-error',e); });
+		reqGet.on('error', function(e) { self._callBack('download-error',e); });
 	};
 
-	AutoUpdater.forceExtract = function() {
-		var admzip = require('adm-zip');
-
-		var zip = new admzip(this.updateName);
-	    var zipEntries = zip.getEntries(); // an array of ZipEntry records
-
-	    //console.log(zipEntries[0].toString());
-	    zip.extractEntryTo(zipEntries[0],'./TMP',false,true);
-	    fs.unlinkSync(this.updateName); // delete installed update.
-
-	    this.callBack('extracted');
-	    this.callBack('end');
+	AutoUpdater.checkDependencies = function(){ // return Bool
+		if ( this.cache.dependencies === undefined ) {
+			if ( this.jsons.client != undefined && this.jsons.remote != undefined ) // ret undefined. No idea
+				if ( this.jsons.client.dependencies.length != this.jsons.remote.dependencies.length ) this.cache.dependencies = false;
+				else {
+					for ( key in this.jsons.remote.dependencies ) // Itero sobre las remotas. Si tengo demás en cliente, no es critico
+						if ( this.jsons.remote.dependencies[key] != this.jsons.client.dependencies[key] ) { // Si no existe, tmb error
+							this.cache.dependencies = false;
+							return false;
+						};
+					this.cache.dependencies = true;
+				}
+		}		
+		return this.cache.dependencies;
 	};
 
+	// Run:
 	AutoUpdater.init(opciones);
 
 	return AutoUpdater;
