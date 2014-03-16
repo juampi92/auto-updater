@@ -33,6 +33,7 @@
 */
 
 var fs = require('fs'),
+	http = require('http'),
 	https = require('https');
 
 module.exports = function( opciones ){
@@ -54,7 +55,7 @@ module.exports = function( opciones ){
 		this.cache = new Array();
 
 		this.opc.pathToJson = (opciones != null && opciones.pathToJson != null && opciones.pathToJson != undefined ) ? (opciones.pathToJson) : "";
-		this.opc.async = true;//(opciones != null && opciones.async == false) ? false : true; // No support for http response sync.
+		this.opc.async = true;//(opciones != null && opciones.async == false) ? false : true; // No support for https response sync.
 		this.opc.silent = ( opciones && opciones.silent ) || false; // No advierte eventos
 		this.opc.autoupdate = (opciones != null && opciones.autoupdate == true) ? true : false; // Descarga automáticamente la nueva versión
 		this.opc.check_git = (opciones && opciones.check_git == false ) ? false : true;
@@ -84,16 +85,11 @@ module.exports = function( opciones ){
 	};
 
 	AutoUpdater.forceExtract = function() {
-		var admzip = require('adm-zip');
-
-		var zip = new admzip(this.updateName);
-	    var zipEntries = zip.getEntries(); // an array of ZipEntry records
-
-	    zip.extractEntryTo(zipEntries[0],'./',false,true);
-	    fs.unlinkSync(this.updateName); // delete installed update.
-
-	    this._callBack('extracted');
-	    this._callBack('end');
+		var self = this;
+		this._extract(this.updateName,false,function(){
+			self._callBack('extracted');
+	    	self._callBack('end');
+		});
 	};
 
 	AutoUpdater.on = function( evento , callback ){
@@ -161,7 +157,7 @@ module.exports = function( opciones ){
 		opc.method = ( opc.method == null || opc.method == undefined ) ? 'GET' : opc.method;
 		
 		var reqGet = https.request(opc, function(res) {
-			data = "";
+			var data = "";
 			res.on('data', function(d) { data = data + d; });
 			res.on('end',function(){ callback(data); });
 		});
@@ -179,7 +175,11 @@ module.exports = function( opciones ){
 		}
 
 		// No tengo el archivo! Descargando!!
-		var reqGet = https.get(opc, function(res) {
+		var htt;
+		if ( opc.http === true ) htt = http;
+		else htt = https;
+
+		var reqGet = htt.get(opc, function(res) {
 			if ( fs.existsSync("_"+name)) fs.unlinkSync("_"+name); // Empiezo denuevo.
 		    
 			self._callBack('download-start',name);
@@ -188,22 +188,42 @@ module.exports = function( opciones ){
 		    	len = parseInt(res.headers['content-length'], 10),
 		    	current = 0;
 
+		    res.pipe(file);
 		    res.on('data', function(chunk) {
-		    		file.write(chunk);
+		    		//file.write(chunk);
 		    		current += chunk.length;
 		    		perc = ( 100.0 * (current/len) ).toFixed(2);
 		    		self._callBack('download-update',name,perc);
-		        }).on('end', function() {
-		        	self._callBack('download-end',name);
-		        	
-		        	file.end();
-		        	fs.renameSync("_"+name, name);
-		            
-		            // Call callback
-		            callback();
 		        });
+		    res.on('end', file.end );
+		    
+		    file.on('finish', function() {
+		        console.log("Se termino de escribir el archivo.");
+		        fs.renameSync("_"+name, name);
+		        self._callBack('download-end',name);
+		        
+				// Call callback
+		    	callback();
+		        //res.end('done');
+		    });
 		});
+		reqGet.end();
 		reqGet.on('error', function(e) { self._callBack('download-error',e); });
+	};
+
+	AutoUpdater._extract = function(name,subfolder,callback){
+		var admzip = require('adm-zip');
+
+		var zip = new admzip(name);
+	    var zipEntries = zip.getEntries(); // an array of ZipEntry records
+
+	    if ( subfolder )
+	    	zip.extractAllTo('./',true);
+	    else 
+	    	zip.extractEntryTo(zipEntries[0],'./',false,true);
+	    fs.unlinkSync(name); // delete installed update.
+
+	    callback();
 	};
 
 	AutoUpdater.checkDependencies = function(){ // return Bool
