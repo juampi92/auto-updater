@@ -176,7 +176,7 @@ module.exports = function( opciones ){
 
 		// No tengo el archivo! Descargando!!
 		var protocol;
-		if ( opc.ssh === true ) protocol = https; else protocol = http;
+		if ( opc.ssh === false ) protocol = http; else protocol = https;
 
 		var reqGet = protocol.get(opc, function(res) {
 			if ( fs.existsSync("_"+name)) fs.unlinkSync("_"+name); // Empiezo denuevo.
@@ -194,7 +194,7 @@ module.exports = function( opciones ){
 		    		perc = ( 100.0 * (current/len) ).toFixed(2);
 		    		self._callBack('download-update',name,perc);
 		        });
-		    res.on('end', file.end );
+		    res.on('end', function(){ file.end(); } );
 		    
 		    file.on('finish', function() {
 		        console.log("Se termino de escribir el archivo.");
