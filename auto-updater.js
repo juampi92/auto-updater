@@ -175,11 +175,10 @@ module.exports = function( opciones ){
 		}
 
 		// No tengo el archivo! Descargando!!
-		var htt;
-		if ( opc.http === true ) htt = http;
-		else htt = https;
+		var protocol;
+		if ( opc.ssh === true ) protocol = https; else protocol = http;
 
-		var reqGet = htt.get(opc, function(res) {
+		var reqGet = protocol.get(opc, function(res) {
 			if ( fs.existsSync("_"+name)) fs.unlinkSync("_"+name); // Empiezo denuevo.
 		    
 			self._callBack('download-start',name);
