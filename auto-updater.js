@@ -36,37 +36,37 @@ var fs = require('fs'),
 	http = require('http'),
 	https = require('https');
 
-module.exports = function( opciones ){
+module.exports = function(config){
 	
 	function AutoUpdater() {
 		this.eventCallbacks;
 		this.jsons;
-		this.opc;
+		this.opt;
 		this.update_dest;
 		this.updateName;
 		this.cache;
 	};
 
-	AutoUpdater.init = function(opciones){
+	AutoUpdater.init = function(options){
 		this.eventCallbacks = new Array();
 		this.jsons = new Array();
-		this.opc = new Array();
+		this.opt = new Array();
 		this.update_dest = 'update';
 		this.cache = new Array();
 
-		this.opc.pathToJson = (opciones != null && opciones.pathToJson != null && opciones.pathToJson != undefined ) ? (opciones.pathToJson) : "";
-		this.opc.async = true;//(opciones != null && opciones.async == false) ? false : true; // No support for https response sync.
-		this.opc.silent = ( opciones && opciones.silent ) || false; // No advierte eventos
-		this.opc.autoupdate = (opciones != null && opciones.autoupdate == true) ? true : false; // Descarga automáticamente la nueva versión
-		this.opc.check_git = (opciones && opciones.check_git == false ) ? false : true;
-		//this.opc.autocheck = (opciones.autocheck == false) ? false : true; // Revisa al inicializarse. No da tiempo a setear los eventos
+		this.opt.pathToJson = (options != null && options.pathToJson != null && options.pathToJson != undefined ) ? (options.pathToJson) : "";
+		this.opt.async = true;//(options != null && options.async == false) ? false : true; // No support for https response sync.
+		this.opt.silent = ( options && options.silent ) || false; // No advierte eventos
+		this.opt.autoupdate = (options != null && options.autoupdate == true) ? true : false; // Descarga automáticamente la nueva versión
+		this.opt.check_git = (options && options.check_git == false ) ? false : true;
+		//this.opt.autocheck = (options.autocheck == false) ? false : true; // Revisa al inicializarse. No da tiempo a setear los eventos
 	};
 
 	AutoUpdater.forceCheck = function(){
 		var self = this;
 
 		// CheckGit
-		if ( this.opc.check_git && this._checkGit() ) return;
+		if ( this.opt.check_git && this._checkGit() ) return;
 
 		this._loadClientJson();
 	};
@@ -76,9 +76,9 @@ module.exports = function( opciones ){
 		this._remoteDownloadUpdate( this.updateName , { host:'codeload.github.com' , path:this.jsons.client["auto-updater"].repo + '/zip/' + this.jsons.client["auto-updater"].branch },
 			function(existed){
 				if ( existed === true )
-					self._callBack('update-not-installed');
+					self._callback('update-not-installed');
 				else
-					self._callBack('update-downloaded');
+					self._callback('update-downloaded');
 				
 				if ( self.opc.autoupdate ) self.forceExtract();
 			});
@@ -87,28 +87,28 @@ module.exports = function( opciones ){
 	AutoUpdater.forceExtract = function() {
 		var self = this;
 		this._extract(this.updateName,false,function(){
-			self._callBack('extracted');
-	    	self._callBack('end');
+			self._callback('extracted');
+	    	self._callback('end');
 		});
 	};
 
-	AutoUpdater.on = function( evento , callback ){
-		if ( this.opc.async ) this.eventCallbacks[evento] = callback;
+	AutoUpdater.on = function( evnt , callback ){
+		if ( this.opt.async ) this.eventCallbacks[evnt] = callback;
 	};
 
 	AutoUpdater._checkGit = function(){
 		if ( this.cache.git === undefined ) {
 			this.cache.git = fs.existsSync(".git");
-			if ( this.cache.git === true ) this._callBack('git-clone');
+			if ( this.cache.git === true ) this._callback('git-clone');
 		}
 		return this.cache.git;
 	};
 
 	AutoUpdater._loadClientJson = function(){
-		var path = this.opc.pathToJson + "./package.json",
+		var path = this.opt.pathToJson + "./package.json",
 			self = this;
 		
-		if ( ! this.opc.async ) { // Sync
+		if ( ! this.opt.async ) { // Sync
 			//console.log("Syncrono");
 			this.jsons.client = JSON.parse(fs.readFileSync(path));
 			this._loadRemoteJson();
@@ -124,7 +124,7 @@ module.exports = function( opciones ){
 
 	AutoUpdater._loadRemoteJson = function(){
 		var self = this,
-			path = this.jsons.client["auto-updater"].repo + '/' + this.jsons.client["auto-updater"].branch + '/' + this.opc.pathToJson + 'package.json' ;
+			path = this.jsons.client["auto-updater"].repo + '/' + this.jsons.client["auto-updater"].branch + '/' + this.opt.pathToJson + 'package.json' ;
 
 		this._remoteDownloader({host:'raw.github.com',path:path},function(data){
 			self.jsons.remote = JSON.parse(data);
@@ -135,16 +135,16 @@ module.exports = function( opciones ){
 
 	AutoUpdater._loaded = function(){
 		if ( this.jsons.client.version == this.jsons.remote.version ) {
-			this._callBack('check-up-to-date',this.jsons.remote.version);
-			this._callBack('end');
+			this._callback('check-up-to-date',this.jsons.remote.version);
+			this._callback('end');
 		} else {
-			this._callBack('check-out-dated',this.jsons.client.version,this.jsons.remote.version);
-			if ( this.opc.autoupdate ) this.forceDownloadUpdate();
+			this._callback('check-out-dated',this.jsons.client.version,this.jsons.remote.version);
+			if ( this.opt.autoupdate ) this.forceDownloadUpdate();
 		}
 	};
 
-	AutoUpdater._callBack = function(evnt , p1,p2){
-		if ( this.opc.silent ) return;
+	AutoUpdater._callback = function(evnt , p1,p2){
+		if ( this.opt.silent ) return;
 		var evento = this.eventCallbacks[evnt];
 		if ( evento != null && evento != undefined ) evento(p1,p2);
 	};
@@ -162,7 +162,7 @@ module.exports = function( opciones ){
 			res.on('end',function(){ callback(data); });
 		});
 		reqGet.end();
-		reqGet.on('error', function(e) { self._callBack('download-error',e); });
+		reqGet.on('error', function(e) { self._callback('download-error',e); });
 	};
 
 	AutoUpdater._remoteDownloadUpdate = function( name, opc, callback ){
@@ -181,7 +181,7 @@ module.exports = function( opciones ){
 		var reqGet = protocol.get(opc, function(res) {
 			if ( fs.existsSync("_"+name)) fs.unlinkSync("_"+name); // Empiezo denuevo.
 		    
-			self._callBack('download-start',name);
+			self._callback('download-start',name);
 
 		    var file = fs.createWriteStream("_"+name),
 		    	len = parseInt(res.headers['content-length'], 10),
@@ -192,14 +192,14 @@ module.exports = function( opciones ){
 		    		//file.write(chunk);
 		    		current += chunk.length;
 		    		perc = ( 100.0 * (current/len) ).toFixed(2);
-		    		self._callBack('download-update',name,perc);
+		    		self._callback('download-update',name,perc);
 		        });
 		    res.on('end', function(){ file.end(); } );
 		    
 		    file.on('finish', function() {
 		        console.log("Se termino de escribir el archivo.");
 		        fs.renameSync("_"+name, name);
-		        self._callBack('download-end',name);
+		        self._callback('download-end',name);
 		        
 				// Call callback
 		    	callback();
@@ -207,7 +207,7 @@ module.exports = function( opciones ){
 		    });
 		});
 		reqGet.end();
-		reqGet.on('error', function(e) { self._callBack('download-error',e); });
+		reqGet.on('error', function(e) { self._callback('download-error',e); });
 	};
 
 	AutoUpdater._extract = function(name,subfolder,callback){
@@ -249,7 +249,7 @@ module.exports = function( opciones ){
 	};
 
 	// Run:
-	AutoUpdater.init(opciones);
+	AutoUpdater.init(config);
 
 	return AutoUpdater;
 };
