@@ -1,11 +1,11 @@
 var fs = require('fs'),
   http = require('http'),
   https = require('https'),
-  EventEmitter = require('event-emitter');
+  EventEmitter = require('events').EventEmitter;
 
 module.exports = function(config) {
 
-  var AutoUpdater = EventEmitter({});
+  var AutoUpdater = new EventEmitter();
 
   AutoUpdater.init = function(options) {
     this.jsons = [];
@@ -103,12 +103,6 @@ module.exports = function(config) {
       this.emit('check-out-dated', this.jsons.client.version, this.jsons.remote.version);
       if (this.opt.autoupdate) this.forceDownloadUpdate();
     }
-  };
-
-  var defEmitter = AutoUpdater.emit;
-  AutoUpdater.emit = function() {
-    if (this.opt.silent) return;
-    return defEmitter.call(this, arguments);
   };
 
   AutoUpdater._remoteDownloader = function(opc, callback) {

@@ -8,8 +8,7 @@
   },
   "main": "./auto-updater",
   "dependencies": {
-    "adm-zip": "*",
-    "event-emitter": "^0.3.3"
+    "adm-zip": "*"
   },
   "keywords": [
     "auto-updater",
