@@ -115,3 +115,4 @@ That segment must be added to the proyect (local). It is critical that the packa
 
 # Dependencies
  * [Adm-zip](https://github.com/cthackers/adm-zip)
+ * [Event-Emitter](github.com/medikoo/event-emitter)

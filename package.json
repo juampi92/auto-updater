@@ -3,20 +3,27 @@
   "description": "Automatically updates your client version when is outdated by the repository",
   "version": "0.0.7",
   "author": {
-    "name" : "@Juampi_92",
-    "url" : "https://github.com/juampi92"
+    "name": "@Juampi_92",
+    "url": "https://github.com/juampi92"
   },
   "main": "./auto-updater",
   "dependencies": {
-    "adm-zip" : "*"
+    "adm-zip": "*",
+    "event-emitter": "^0.3.3"
   },
-  "keywords": [ "auto-updater","automatic","auto","update","updater" ],
+  "keywords": [
+    "auto-updater",
+    "automatic",
+    "auto",
+    "update",
+    "updater"
+  ],
   "bugs": "https://github.com/juampi92/auto-updater/issues",
   "repository": {
     "type": "git",
     "url": "https://github.com/juampi92/auto-updater.git"
   },
-  "license" : "GPL-2.0",
+  "license": "GPL-2.0",
   "engines": {
     "node": "*"
   }
