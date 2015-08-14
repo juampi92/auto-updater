@@ -5,22 +5,48 @@ var fs = require('fs'),
 
 module.exports = function(config) {
 
+  /**
+   * @class AutoUpdater
+   * @extends event-emitter
+   */
   var AutoUpdater = new EventEmitter();
 
+  /**
+   * Create defaults
+   * @method init
+   * @param  {Object} options Custom options
+   */
   AutoUpdater.init = function(options) {
     this.jsons = [];
     this.opt = [];
     this.update_dest = 'update';
     this.cache = {};
+    options = options || {};
 
-    this.opt.pathToJson = (options && options.pathToJson && !options.pathToJson) ? (options.pathToJson) : '';
-    this.opt.async = true; //(options && options.async == false) ? false : true; // No support for https response sync.
-    this.opt.silent = (options && options.silent) || false; // No advierte eventos
-    this.opt.autoupdate = (options && options.autoupdate) ? true : false; // Descarga automáticamente la nueva versión
-    this.opt.check_git = (options && options.check_git) ? true : false;
-    //this.opt.autocheck = (options.autocheck == false) ? false : true; // Revisa al inicializarse. No da tiempo a setear los eventos
+    /**
+     * @attribute pathToJson
+     * @type {String}
+     * @default ''
+     */
+    this.opt.pathToJson = (options.pathToJson && !options.pathToJson) ? (options.pathToJson) : '';
+    /**
+     * @attribute autoupdate
+     * @type {Boolean}
+     * @default false
+     */
+    this.opt.autoupdate = (options.autoupdate) ? true : false; // Descarga automáticamente la nueva versión
+    /**
+     * @attribute check_git
+     * @type {Boolean}
+     * @default false
+     */
+    this.opt.check_git = (options.check_git) ? true : false;
   };
 
+  /**
+   * Checks packages versions (local and remote)
+   * @method forceCheck
+   */
   AutoUpdater.forceCheck = function() {
     var self = this;
 
@@ -30,6 +56,13 @@ module.exports = function(config) {
     this._loadClientJson();
   };
 
+  /**
+   * Downloads the latest zip
+   * Fires:
+   *   'update-not-installed' if the update exists but it wasn't installed
+   *   'update-downloaded' if the update was successfully downloaded
+   * @method forceDownloadUpdate
+   */
   AutoUpdater.forceDownloadUpdate = function() {
     var self = this;
     this._remoteDownloadUpdate(this.updateName, {
@@ -42,10 +75,20 @@ module.exports = function(config) {
         else
           self.emit('update-downloaded');
 
-        if (self.opc.autoupdate) self.forceExtract();
+        if (self.opc.autoupdate) {
+          self.forceExtract();
+        }
       });
   };
 
+  /**
+   * Extracts the zip, replacing everything.
+   * Fires:
+   *   'extracted' when the extraction was successful
+   *   'end' when the extraction was successful
+   * @method forceExtract
+   * @return {[type]}     [description]
+   */
   AutoUpdater.forceExtract = function() {
     var self = this;
     this._extract(this.updateName, false, function() {
@@ -54,6 +97,13 @@ module.exports = function(config) {
     });
   };
 
+  /**
+   * Fires:
+   *   'git-clone' if it has a .git folder
+   * @method _checkGit
+   * @return {Boolean}  Has git folder
+   * @private
+   */
   AutoUpdater._checkGit = function() {
     if (this.cache.git === undefined) {
       this.cache.git = fs.existsSync('.git');
@@ -64,22 +114,27 @@ module.exports = function(config) {
     return this.cache.git;
   };
 
+  /**
+   * Reads the package.json
+   * @method _loadClientJson
+   * @private
+   */
   AutoUpdater._loadClientJson = function() {
     var path = this.opt.pathToJson + './package.json',
       self = this;
 
-    if (!this.opt.async) { // Sync
-      this.jsons.client = JSON.parse(fs.readFileSync(path));
-      this._loadRemoteJson();
-    } else { // Async
-      fs.readFile(path, function(err, data) {
-        if (err) throw err;
-        self.jsons.client = JSON.parse(data);
-        self._loadRemoteJson();
-      });
-    }
+    fs.readFile(path, function(err, data) {
+      if (err) throw err;
+      self.jsons.client = JSON.parse(data);
+      self._loadRemoteJson();
+    });
   };
 
+  /**
+   * Fetches and reads the remote package.json
+   * @method _loadRemoteJson
+   * @private
+   */
   AutoUpdater._loadRemoteJson = function() {
     var self = this,
       path = this.jsons.client['auto-updater'].repo + '/' + this.jsons.client['auto-updater'].branch + '/' + this.opt.pathToJson + 'package.json';
@@ -95,6 +150,15 @@ module.exports = function(config) {
     });
   };
 
+  /**
+   *
+   * Fires:
+   *   'check-up-to-date' if local version and remote version match
+   *   'end' cause it finished checking
+   *   'check-out-dated' if the versions don't match
+   * @method _loaded
+   * @private
+   */
   AutoUpdater._loaded = function() {
     if (this.jsons.client.version == this.jsons.remote.version) {
       this.emit('check-up-to-date', this.jsons.remote.version);
@@ -105,6 +169,14 @@ module.exports = function(config) {
     }
   };
 
+  /**
+   * Fires:
+   *   'download-error' In case the download fails
+   * @method _remoteDownloader
+   * @param  {[type]} opc      Object containing host, path and method of the download
+   * @param  {Function} callback To call when it's done downloading
+   * @private
+   */
   AutoUpdater._remoteDownloader = function(opc, callback) {
     var self = this;
 
@@ -127,6 +199,18 @@ module.exports = function(config) {
     reqGet.end();
   };
 
+  /**
+   * Fires:
+   *   'download-start'
+   *   'download-update'
+   *   'download-end'
+   *   'download-error'
+   * @method _remoteDownloadUpdate
+   * @param  {String} name Name of the update
+   * @param  {Object} opc Download request options
+   * @param  {Function} callback
+   * @private
+   */
   AutoUpdater._remoteDownloadUpdate = function(name, opc, callback) {
     var self = this;
 
@@ -165,9 +249,7 @@ module.exports = function(config) {
         fs.renameSync('_' + name, name);
         self.emit('download-end', name);
 
-        // Call callback
         callback();
-        //res.end('done');
       });
     });
     reqGet.end();
@@ -176,7 +258,15 @@ module.exports = function(config) {
     });
   };
 
-  AutoUpdater._extract = function(name, subfolder, callback) {
+  /**
+   * 
+   * @method _extract
+   * @param  {String}   name      Path of zip
+   * @param  {Boolean}   subfolder If subfolder. (check Adm-zip)
+   * @param  {Function} done  Return callback
+   * @private
+   */
+  AutoUpdater._extract = function(name, subfolder, done) {
     var admzip = require('adm-zip');
 
     var zip = new admzip(name);
@@ -190,10 +280,16 @@ module.exports = function(config) {
 
     fs.unlinkSync(name); // delete installed update.
 
-    callback();
+    done();
   };
 
-  AutoUpdater.checkDependencies = function() { // return Bool
+  /**
+   * Iterates over the local and remote dependencies to check if they have changed
+   * @method _checkDependencies
+   * @return {Boolean} If they have changed
+   * @private
+   */
+  AutoUpdater._checkDependencies = function() { // return Bool
     if (!this.cache.dependencies) {
       if (this.jsons.client !== undefined && this.jsons.remote !== undefined) // ret undefined. No idea
         if (this.jsons.client.dependencies.length != this.jsons.remote.dependencies.length) this.cache.dependencies = false;
@@ -211,8 +307,13 @@ module.exports = function(config) {
     return this.cache.dependencies;
   };
 
+  /**
+   * Checks agains cache, and if not, calculates
+   * @method diffDependencies
+   * @return {Boolean}
+   */
   AutoUpdater.diffDependencies = function() {
-    if (this.cache.dependencies === undefined) this.checkDependencies();
+    if (this.cache.dependencies === undefined) this._checkDependencies();
     return this.cache.dependencies_diff;
   };
 
