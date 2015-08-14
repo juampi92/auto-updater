@@ -33,10 +33,10 @@ With [npm](http://npmjs.org) do:
 
  * `init ( opc )`
    * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
-   * `async: true` Currently not sync supported.
-   * `silent: false` Does not trigger events
    * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
    * `check_git: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+   * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
+   * `contenthost: 'codeload.github.com'` URL of full remote zip
 
  * `on ( event, callback )` Sets the events
 		

@@ -41,6 +41,18 @@ module.exports = function(config) {
      * @default false
      */
     this.opt.check_git = (options.check_git) ? true : false;
+    /**
+     * @attribute jsonhost
+     * @type {String}
+     * @default 'raw.githubusercontent.com'
+     */
+    this.opt.jsonhost = options.jsonhost || 'raw.githubusercontent.com';
+    /**
+     * @attribute contenthost
+     * @type {String}
+     * @default 'codeload.github.com'
+     */
+    this.opt.contenthost = options.contenthost || 'codeload.github.com';
   };
 
   /**
@@ -66,7 +78,7 @@ module.exports = function(config) {
   AutoUpdater.forceDownloadUpdate = function() {
     var self = this;
     this._remoteDownloadUpdate(this.updateName, {
-        host: 'codeload.github.com',
+        host: this.opt.contenthost,
         path: this.jsons.client['auto-updater'].repo + '/zip/' + this.jsons.client['auto-updater'].branch
       },
       function(existed) {
@@ -141,7 +153,7 @@ module.exports = function(config) {
 
 
     this._remoteDownloader({
-      host: 'raw.githubusercontent.com',
+      host: this.opt.jsonhost,
       path: path
     }, function(data) {
       self.jsons.remote = JSON.parse(data);
