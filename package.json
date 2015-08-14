@@ -8,7 +8,8 @@
   },
   "main": "./auto-updater",
   "dependencies": {
-    "adm-zip": "*"
+    "adm-zip": "*",
+    "underscore": "^1.8.3"
   },
   "keywords": [
     "auto-updater",

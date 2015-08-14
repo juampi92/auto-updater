@@ -18,15 +18,15 @@ With [npm](http://npmjs.org) do:
 # Events
 
  * `git-clone` The user has a git clone. Recommend use the "git pull" command
- * `check-up-to-date ( v )` versions match
- * `check-out-dated ( v_old , v)` versions dont match
- * `update-downloaded` Update downloaded in the machine
- * `update-not-installed` Update was already in the dir, so it wasnt installed
- * `extracted` The update has been extracted correctly.
- * `download-start ( name )` The download of "name of the update" has started
- * `download-update ( name , % )` The download has been updated. New percentage
- * `download-end ( name )` The download has ended
- * `download-error ( err )` Something happened to the download
+ * `check.up-to-date ( v )` versions match
+ * `check.out-dated ( v_old , v)` versions dont match
+ * `update.downloaded` Update downloaded in the machine
+ * `update.not-installed` Update was already in the dir, so it wasnt installed
+ * `update.extracted` The update has been extracted correctly.
+ * `download.start ( name )` The download of "name of the update" has started
+ * `download.update ( name , % )` The download has been updated. New percentage
+ * `download.end ( name )` The download has ended
+ * `download.error ( err )` Something happened to the download
  * `end` Called when all is over ( along with 'check-up-to-date' if there are no updates, or with 'extracted' if it was installed )
 
 # Public Methods:
@@ -34,7 +34,7 @@ With [npm](http://npmjs.org) do:
  * `init ( opc )`
    * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
    * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
-   * `check_git: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+   * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
    * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
    * `contenthost: 'codeload.github.com'` URL of full remote zip
 
