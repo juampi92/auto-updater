@@ -36,7 +36,7 @@ With [npm](http://npmjs.org) do:
  * `fire ( command )` Fires a command
 
 ## Config
-  * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
+ * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
  * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
  * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
  * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
