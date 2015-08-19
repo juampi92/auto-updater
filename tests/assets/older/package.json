@@ -1,5 +1,5 @@
 {
-  "version": "0.0.1",
+  "version": "0.0.4",
   "auto-updater": {
     "repo": "juampi92/auto-updater",
     "branch": "v1.0.0"
