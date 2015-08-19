@@ -31,21 +31,23 @@ With [npm](http://npmjs.org) do:
 
 # Public Methods:
 
- * `init ( opc )`
-   * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
-   * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
-   * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
-   * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
-   * `contenthost: 'codeload.github.com'` URL of full remote zip
+ * `use ( config )`
+ * `on ( event, callback )` Sets the events ([EventEmitter](https://nodejs.org/api/events.html#toc) compatible)
+ * `fire ( command )` Fires a command
 
- * `on ( event, callback )` Sets the events
-		
- * `checkDependencies()` Returns bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
- * `diffDependencies()` Returns an array of dependencies (only the names) that dont match
+## Config
+  * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
+ * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
+ * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+ * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
+ * `contenthost: 'codeload.github.com'` URL of full remote zip
 
- * `forceCheck ()` Compares the two versions. Triggers: 'git-clone','check-up-to-date','check-out-dated'
- * `forceDownloadUpdate()` Downloads the update. Triggers: 'update-downloaded','update-not-installed','download-*'
- * `forceExtract()` Extracts (or installs) the update reeplacing old files (it doesnt delete untracked files). Triggers: 'extracted'
+## Commands
+ * `check-dependencies` Returns bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
+ * `diff-dependencies` Returns an array of dependencies (only the names) that dont match
+ * `check` Compares the two versions. Triggers: 'git-clone','check-up-to-date','check-out-dated'
+ * `download-update` Downloads the update. Triggers: 'update-downloaded','update-not-installed','download-*'
+ * `force-extract` Extracts (or installs) the update reeplacing old files (it doesnt delete untracked files). Triggers: 'update.extracted'
 
 Warning: do not run this methods in other order.
 

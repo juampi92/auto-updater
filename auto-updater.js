@@ -1,7 +1,11 @@
 var fs = require('fs'),
+
+  util = require('util'),
+  path = require('path').posix,
+
   http = require('http'),
   https = require('https'),
-  util = require('util'),
+
   EventEmitter = require('events').EventEmitter;
 
 var _ = require('underscore');
@@ -11,7 +15,7 @@ var _ = require('underscore');
  * @extends event-emitter
  */
 var AutoUpdater = function(config) {
-  EventEmitter.call(this);
+  EventEmitter.apply(this);
 
   this.attrs = _.extend({}, AutoUpdater.defaults, config);
   this.update_dest = 'update';
@@ -21,6 +25,7 @@ var AutoUpdater = function(config) {
 
 // Proto inheritance
 util.inherits(AutoUpdater, EventEmitter);
+AutoUpdater.prototype.emit = null;
 
 /**
  * The user has a git clone. Recommend use the "git pull" command
@@ -129,115 +134,152 @@ AutoUpdater.defaults = {
  * Extra config
  * @method use
  * @param  {Object} options Custom options
+ * @chainable
  */
 AutoUpdater.prototype.use = function(options) {
   _.extend(this.attrs, options);
+  return this;
 };
 
 /**
- * Checks packages versions (local and remote)
- * @method forceCheck
+ * Fire commands
+ * @method fire
+ * @param  {String} command Name of command
+ * @chainable
  */
-AutoUpdater.prototype.forceCheck = function() {
-  var self = this;
-
-  // CheckGit
-  if (this.attrs.checkgit && this._checkGit()) return;
-
-  this._loadClientJson();
+AutoUpdater.prototype.fire = function(command) {
+  commands[command].apply(this, _.toArray(arguments).slice(1));
+  return this;
 };
 
 /**
- * Downloads the latest zip
- * Fires:
- *   'update.not-installed' if the update exists but it wasn't installed
- *   'update.downloaded' if the update was successfully downloaded
- * @method forceDownloadUpdate
- */
-AutoUpdater.prototype.forceDownloadUpdate = function() {
-  var self = this;
-  this._remoteDownloadUpdate(this.updateName, {
-      host: this.attrs.contenthost,
-      path: this.jsons.client['auto-updater'].repo + '/zip/' + this.jsons.client['auto-updater'].branch
-    },
-    function(existed) {
-      if (existed === true)
-        self.emit('update.not-installed');
-      else
-        self.emit('update.downloaded');
-
-      if (self.opc.autoupdate) {
-        self.forceExtract();
-      }
-    });
-};
-
-/**
- * Extracts the zip, replacing everything.
- * Fires:
- *   'update.extracted' when the extraction was successful
- *   'end' when the extraction was successful
- * @method forceExtract
- * @return {[type]}     [description]
- */
-AutoUpdater.prototype.forceExtract = function() {
-  var self = this;
-  this._extract(this.updateName, false, function() {
-    self.emit('update.extracted');
-    self.emit('end');
-  });
-};
-
-/**
- * Fires:
- *   'git-clone' if it has a .git folder
- * @method _checkGit
- * @return {Boolean}  Has git folder
+ * Error message handling
+ *   (if debug mode, triggers console error)
+ * @method error
+ * @param  {String} message Description of the error
+ * @param  {String} code    Error code
+ * @param  {Exception} e       Error object
  * @private
  */
-AutoUpdater.prototype._checkGit = function() {
-  if (this.cache.git === undefined) {
-    this.cache.git = fs.existsSync('.git');
-    if (this.cache.git === true) {
-      this.emit('git-clone');
-    }
+AutoUpdater.prototype.error = function(message, code, e) {
+  if (this.attrs.devmode) {
+    console.error(message);
   }
-  return this.cache.git;
+  emit(this, 'error', code, e);
 };
+
+/**
+ * Emitts events
+ * @method emit
+ * @param  {Context} context Context of AutoUpdater
+ * @private
+ */
+function emit(context) {
+  EventEmitter.prototype.emit.apply(context, _.toArray(arguments).slice(1));
+}
+
+var commands = {
+  /**
+   * Checks packages versions (local and remote)
+   * @method check
+   */
+  'check': function() {
+    // first check git if needed
+    if (this.attrs.checkgit && checkGit.call(this)) return;
+
+    loadClientJson.call(this);
+  },
+  /**
+   * Downloads the latest zip
+   * Fires:
+   *   'update.not-installed' if the update exists but it wasn't installed
+   *   'update.downloaded' if the update was successfully downloaded
+   * @method download-update
+   */
+  'download-update': function() {
+    var self = this;
+    remoteDownloadUpdate.call(this, this.updateName, {
+        host: this.attrs.contenthost,
+        path: path.join(this.jsons.client['auto-updater'].repo,
+          'zip',
+          this.jsons.client['auto-updater'].branch)
+      },
+      function(existed) {
+        if (existed === true)
+          emit(self, 'update.not-installed');
+        else
+          emit(self, 'update.downloaded');
+
+        if (self.opc.autoupdate) {
+          self.fire('extract');
+        }
+      });
+  },
+  /**
+   * Extracts the zip, replacing everything.
+   * Fires:
+   *   'update.extracted' when the extraction was successful
+   *   'end' when the extraction was successful
+   * @method extract
+   */
+  'extract': function() {
+    var self = this;
+    extract.call(this, this.updateName, false, function() {
+      emit(self, 'update.extracted');
+      emit(self, 'end');
+    });
+  },
+  /**
+   * Checks agains cache, and if not, calculates
+   * @method diff-dependencies
+   * @return {Boolean}
+   */
+  'diff-dependencies': function() {
+    if (this.cache.dependencies === undefined) checkDependencies.call(this);
+    return this.cache.dependencies_diff;
+  }
+};
+
+
 
 /**
  * Reads the package.json
- * @method _loadClientJson
+ * @method loadClientJson
  * @private
  */
-AutoUpdater.prototype._loadClientJson = function() {
-  var path = this.attrs.pathToJson + './package.json',
+var loadClientJson = function() {
+  var jsonPath = path.join('.', this.attrs.pathToJson,
+      'package.json'),
     self = this;
 
-  fs.readFile(path, function(err, data) {
-    if (err) throw err;
+  fs.readFile(jsonPath, 'utf-8', function(err, data) {
+    if (err) return;
     self.jsons.client = JSON.parse(data);
-    self._loadRemoteJson();
+    loadRemoteJson.call(self);
   });
 };
 
 /**
  * Fetches and reads the remote package.json
- * @method _loadRemoteJson
+ * @method loadRemoteJson
  * @private
  */
-AutoUpdater.prototype._loadRemoteJson = function() {
+var loadRemoteJson = function() {
   var self = this,
-    path = this.jsons.client['auto-updater'].repo + '/' + this.jsons.client['auto-updater'].branch + '/' + this.attrs.pathToJson + 'package.json';
+    jsonPath = path.join(this.jsons.client['auto-updater'].repo,
+      this.jsons.client['auto-updater'].branch,
+      this.attrs.pathToJson,
+      'package.json');
 
-
-  this._remoteDownloader({
+  remoteDownloader.call(this, {
     host: this.attrs.jsonhost,
-    path: path
-  }, function(data) {
-    self.jsons.remote = JSON.parse(data);
+    path: '/' + jsonPath
+  }, function(err, data) {
+    if (err) return;
+
+    self.jsons.remote = data;
     self.updateName = self.update_dest + '-' + self.jsons.remote.version + '.zip';
-    self._loaded();
+    loaded.call(self);
   });
 };
 
@@ -247,47 +289,63 @@ AutoUpdater.prototype._loadRemoteJson = function() {
  *   'check.up-to-date' if local version and remote version match
  *   'end' cause it finished checking
  *   'check.out-dated' if the versions don't match
- * @method _loaded
+ * @method loaded
  * @private
  */
-AutoUpdater.prototype._loaded = function() {
+var loaded = function() {
   if (this.jsons.client.version == this.jsons.remote.version) {
-    this.emit('check.up-to-date', this.jsons.remote.version);
-    this.emit('end');
+    emit(this, 'check.up-to-date', this.jsons.remote.version);
+    emit(this, 'end');
   } else {
-    this.emit('check.out-dated', this.jsons.client.version, this.jsons.remote.version);
-    if (this.attrs.autoupdate) this.forceDownloadUpdate();
+    emit(this, 'check.out-dated', this.jsons.client.version, this.jsons.remote.version);
+    if (this.attrs.autoupdate) {
+      this.fire('download-update');
+    }
   }
 };
 
 /**
  * Fires:
  *   'download.error' In case the download fails
- * @method _remoteDownloader
+ * @method remoteDownloader
  * @param  {[type]} opc      Object containing host, path and method of the download
  * @param  {Function} callback To call when it's done downloading
  * @private
  */
-AutoUpdater.prototype._remoteDownloader = function(opc, callback) {
+var remoteDownloader = function(opc, callback) {
   var self = this;
 
-  if (!opc.host || !opc.host) return;
-  if (!opc.path || !opc.path) return;
-  opc.method = (!opc.method) ? 'GET' : opc.method;
+  if (!opc.host || !opc.path) return;
 
-  var reqGet = https.request(opc, function(res) {
+  var request = https.request(opc, function(res) {
     var data = '';
     res.on('data', function(d) {
       data = data + d;
     });
     res.on('end', function() {
-      callback(data);
+      var error = null;
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        self.error('Error reading the dowloaded JSON: ' + data, 'download.error', {
+          e: e,
+          response: data,
+          path: opc.path,
+          host: opc.host
+        });
+        error = e;
+        data = null;
+      }
+      callback(error, data);
     });
   });
-  reqGet.on('error', function(e) {
-    self.emit('download.error', e);
+
+  request.on('error', function(e) {
+    self.error('Error downloaing the remote JSON', 'download.error', e);
+    callback(true);
   });
-  reqGet.end();
+
+  request.end();
 };
 
 /**
@@ -296,13 +354,13 @@ AutoUpdater.prototype._remoteDownloader = function(opc, callback) {
  *   'download.update'
  *   'download.end'
  *   'download.error'
- * @method _remoteDownloadUpdate
+ * @method remoteDownloadUpdate
  * @param  {String} name Name of the update
  * @param  {Object} opc Download request options
  * @param  {Function} callback
  * @private
  */
-AutoUpdater.prototype._remoteDownloadUpdate = function(name, opc, callback) {
+var remoteDownloadUpdate = function(name, opc, callback) {
   var self = this;
 
   // Ya tengo el update. Falta instalarlo.
@@ -319,7 +377,7 @@ AutoUpdater.prototype._remoteDownloadUpdate = function(name, opc, callback) {
   var reqGet = protocol.get(opc, function(res) {
     if (fs.existsSync('_' + name)) fs.unlinkSync('_' + name); // Empiezo denuevo.
 
-    self.emit('download.start', name);
+    emit(self, 'download.start', name);
 
     var file = fs.createWriteStream('_' + name),
       len = parseInt(res.headers['content-length'], 10),
@@ -330,7 +388,7 @@ AutoUpdater.prototype._remoteDownloadUpdate = function(name, opc, callback) {
       //file.write(chunk);
       current += chunk.length;
       perc = (100.0 * (current / len)).toFixed(2);
-      self.emit('download.update', name, perc);
+      emit(self, 'download.update', name, perc);
     });
     res.on('end', function() {
       file.end();
@@ -338,26 +396,26 @@ AutoUpdater.prototype._remoteDownloadUpdate = function(name, opc, callback) {
 
     file.on('finish', function() {
       fs.renameSync('_' + name, name);
-      self.emit('download.end', name);
+      emit(self, 'download.end', name);
 
       callback();
     });
   });
   reqGet.end();
   reqGet.on('error', function(e) {
-    self.emit('download.error', e);
+    emit(self, 'download.error', e);
   });
 };
 
 /**
  * 
- * @method _extract
+ * @method extract
  * @param  {String}   name      Path of zip
  * @param  {Boolean}   subfolder If subfolder. (check Adm-zip)
  * @param  {Function} done  Return callback
  * @private
  */
-AutoUpdater.prototype._extract = function(name, subfolder, done) {
+var extract = function(name, subfolder, done) {
   var admzip = require('adm-zip');
 
   var zip = new admzip(name);
@@ -376,11 +434,11 @@ AutoUpdater.prototype._extract = function(name, subfolder, done) {
 
 /**
  * Iterates over the local and remote dependencies to check if they have changed
- * @method _checkDependencies
+ * @method checkDependencies
  * @return {Boolean} If they have changed
  * @private
  */
-AutoUpdater.prototype._checkDependencies = function() { // return Bool
+var checkDependencies = function() { // return Bool
   if (!this.cache.dependencies) {
     if (this.jsons.client !== undefined && this.jsons.remote !== undefined) // ret undefined. No idea
       if (this.jsons.client.dependencies.length != this.jsons.remote.dependencies.length) this.cache.dependencies = false;
@@ -398,14 +456,6 @@ AutoUpdater.prototype._checkDependencies = function() { // return Bool
   return this.cache.dependencies;
 };
 
-/**
- * Checks agains cache, and if not, calculates
- * @method diffDependencies
- * @return {Boolean}
- */
-AutoUpdater.prototype.diffDependencies = function() {
-  if (this.cache.dependencies === undefined) this._checkDependencies();
-  return this.cache.dependencies_diff;
-};
+
 
 module.exports = AutoUpdater;

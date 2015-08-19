@@ -34,4 +34,10 @@
   "scripts": {
     "test": "mocha --reporter spec tests/"
   }
+,
+  "version": "0.0.1",
+  "auto-updater": {
+    "repo": "juampi92/auto-updater",
+    "branch": "v1.0.0"
+  }
 }
