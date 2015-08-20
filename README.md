@@ -24,7 +24,7 @@ With [npm](http://npmjs.org) do:
  * `update.not-installed` Update was already in the dir, so it wasnt installed
  * `update.extracted` The update has been extracted correctly.
  * `download.start ( name )` The download of "name of the update" has started
- * `download.update ( name , % )` The download has been updated. New percentage
+ * `download.progress ( name , % )` The download has been updated. New percentage
  * `download.end ( name )` The download has ended
  * `download.error ( err )` Something happened to the download
  * `end` Called when all is over ( along with 'check-up-to-date' if there are no updates, or with 'extracted' if it was installed )
@@ -41,6 +41,7 @@ With [npm](http://npmjs.org) do:
  * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
  * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
  * `contenthost: 'codeload.github.com'` URL of full remote zip
+ * `progressDebounce: 0` URL of full remote zip
 
 ## Commands
  * `check-dependencies` Returns bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
@@ -69,3 +70,4 @@ That segment must be added to the proyect (local). It is critical that the packa
 # Dependencies
  * [Adm-zip](https://github.com/cthackers/adm-zip)
  * [underscore](https://www.npmjs.com/package/underscore)
+ * [node-promise](https://www.npmjs.com/package/node-promise)

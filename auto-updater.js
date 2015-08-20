@@ -8,7 +8,8 @@ var fs = require('fs'),
 
   EventEmitter = require('events').EventEmitter;
 
-var _ = require('underscore');
+var _ = require('underscore'),
+  Defer = require('node-promise').defer;
 
 /**
  * @class AutoUpdater
@@ -68,7 +69,7 @@ AutoUpdater.prototype.emit = null;
 
 /**
  * The download has been updated. New percentage
- * @event download.update
+ * @event download.progress
  * @param {String} name Name of the update
  * @param {Number} percent Percent of completion
  */
@@ -127,7 +128,14 @@ AutoUpdater.defaults = {
    * @type {Boolean}
    * @default false
    */
-  devmode: false
+  devmode: false,
+  /**
+   * If greater than 0, download progress gets debounced using this time (in ms)
+   * @attribute progressDebounce
+   * @type {Number}
+   * @default 0
+   */
+  progressDebounce: 0
 };
 
 /**
@@ -165,7 +173,7 @@ AutoUpdater.prototype.error = function(message, code, e) {
   if (this.attrs.devmode) {
     console.error(message);
   }
-  emit(this, 'error', code, e);
+  emit(this, 'error', code, e || {});
 };
 
 /**
@@ -187,7 +195,9 @@ var commands = {
     // first check git if needed
     if (this.attrs.checkgit && checkGit.call(this)) return;
 
-    loadClientJson.call(this);
+    loadClientJson.call(this)
+      .then(loadRemoteJson.bind(this))
+      .then(loaded.bind(this));
   },
   /**
    * Downloads the latest zip
@@ -197,20 +207,30 @@ var commands = {
    * @method download-update
    */
   'download-update': function() {
-    var self = this;
+    // Validation
+    if (!this.jsons.client) {
+      loadClientJson.call(this)
+        .then(loadRemoteJson.bind(this))
+        .then(commands['download-update'].bind(this));
+      return;
+    }
+
+    var self = this,
+      jsoninfo = this.jsons.client['auto-updater'];
+
     remoteDownloadUpdate.call(this, this.updateName, {
         host: this.attrs.contenthost,
-        path: path.join(this.jsons.client['auto-updater'].repo,
+        path: '/' + path.join(jsoninfo.repo,
           'zip',
-          this.jsons.client['auto-updater'].branch)
-      },
-      function(existed) {
+          jsoninfo.branch)
+      })
+      .then(function(existed) {
         if (existed === true)
           emit(self, 'update.not-installed');
         else
           emit(self, 'update.downloaded');
 
-        if (self.opc.autoupdate) {
+        if (self.attrs.autoupdate) {
           self.fire('extract');
         }
       });
@@ -224,10 +244,11 @@ var commands = {
    */
   'extract': function() {
     var self = this;
-    extract.call(this, this.updateName, false, function() {
-      emit(self, 'update.extracted');
-      emit(self, 'end');
-    });
+    extract.call(this, this.updateName, false)
+      .then(function() {
+        emit(self, 'update.extracted');
+        emit(self, 'end');
+      });
   },
   /**
    * Checks agains cache, and if not, calculates
@@ -240,47 +261,79 @@ var commands = {
   }
 };
 
+/**
+ * Parses and filters package.json
+ * @method parsePackageJson
+ * @param  {String || Object} data Parsed or raw package.json
+ * @return {Object} Object containing only 'auto-updater', 'version' and 'dependencies'
+ * @private
+ */
+var parsePackageJson = function(data) {
+  if (!_.isObject(data)) {
+    data = JSON.parse(data);
+  }
+  // Validation
+  if (!data['auto-updater']) {
+    this.error('Invalid package.json. No auto-updater field', 'json.error');
+    throw 'error';
+  }
 
+  var filtered = _.pick(data, 'auto-updater', 'version', 'dependencies');
+  return filtered;
+};
 
 /**
  * Reads the package.json
  * @method loadClientJson
+ * @return {Promise}
  * @private
  */
 var loadClientJson = function() {
   var jsonPath = path.join('.', this.attrs.pathToJson,
       'package.json'),
-    self = this;
+    self = this,
+    deferred = Defer();
 
   fs.readFile(jsonPath, 'utf-8', function(err, data) {
-    if (err) return;
-    self.jsons.client = JSON.parse(data);
-    loadRemoteJson.call(self);
+    if (err) {
+      deferred.reject();
+      return;
+    }
+    self.jsons.client = parsePackageJson.call(self, data);
+
+    deferred.resolve();
   });
+  return deferred;
 };
 
 /**
  * Fetches and reads the remote package.json
  * @method loadRemoteJson
+ * @return {Promise}
  * @private
  */
 var loadRemoteJson = function() {
   var self = this,
-    jsonPath = path.join(this.jsons.client['auto-updater'].repo,
-      this.jsons.client['auto-updater'].branch,
+    jsoninfo = self.jsons.client['auto-updater'],
+    repo = jsoninfo.repo,
+    branch = jsoninfo.branch,
+    jsonPath = path.join(repo,
+      branch,
       this.attrs.pathToJson,
-      'package.json');
+      'package.json'),
+    deferred = Defer();
 
   remoteDownloader.call(this, {
-    host: this.attrs.jsonhost,
-    path: '/' + jsonPath
-  }, function(err, data) {
-    if (err) return;
+      host: this.attrs.jsonhost,
+      path: '/' + jsonPath
+    })
+    .then(function(data) {
+      self.jsons.remote = parsePackageJson.call(self, data);
+      self.updateName = self.update_dest + '-' + self.jsons.remote.version + '.zip';
 
-    self.jsons.remote = data;
-    self.updateName = self.update_dest + '-' + self.jsons.remote.version + '.zip';
-    loaded.call(self);
-  });
+      deferred.resolve();
+    }, deferred.reject.bind(deferred));
+  return deferred;
 };
 
 /**
@@ -309,19 +362,23 @@ var loaded = function() {
  *   'download.error' In case the download fails
  * @method remoteDownloader
  * @param  {[type]} opc      Object containing host, path and method of the download
- * @param  {Function} callback To call when it's done downloading
+ * @return {Promise}
  * @private
  */
 var remoteDownloader = function(opc, callback) {
-  var self = this;
-
   if (!opc.host || !opc.path) return;
 
+  var self = this,
+    deferred = Defer();
+
   var request = https.request(opc, function(res) {
+
     var data = '';
+
     res.on('data', function(d) {
       data = data + d;
     });
+
     res.on('end', function() {
       var error = null;
       try {
@@ -333,40 +390,43 @@ var remoteDownloader = function(opc, callback) {
           path: opc.path,
           host: opc.host
         });
-        error = e;
-        data = null;
+        deferred.reject(e);
+        return;
       }
-      callback(error, data);
+      deferred.resolve(data);
     });
+
   });
 
   request.on('error', function(e) {
     self.error('Error downloaing the remote JSON', 'download.error', e);
-    callback(true);
+    deferred.reject();
   });
 
   request.end();
+  return deferred;
 };
 
 /**
  * Fires:
  *   'download.start'
- *   'download.update'
+ *   'download.progress'
  *   'download.end'
  *   'download.error'
  * @method remoteDownloadUpdate
  * @param  {String} name Name of the update
  * @param  {Object} opc Download request options
- * @param  {Function} callback
+ * @return {Promise}
  * @private
  */
-var remoteDownloadUpdate = function(name, opc, callback) {
-  var self = this;
+var remoteDownloadUpdate = function(name, opc) {
+  var self = this,
+    deferred = Defer();
 
   // Ya tengo el update. Falta instalarlo.
   if (fs.existsSync(name)) {
-    callback(true);
-    return;
+    deferred.resolve(true);
+    return deferred;
   }
 
   // No tengo el archivo! Descargando!!
@@ -374,22 +434,34 @@ var remoteDownloadUpdate = function(name, opc, callback) {
   if (opc.ssh === false) protocol = http;
   else protocol = https;
 
-  var reqGet = protocol.get(opc, function(res) {
-    if (fs.existsSync('_' + name)) fs.unlinkSync('_' + name); // Empiezo denuevo.
+  // download request
+  var request = protocol.get(opc, function(res) {
+    // Check if the file already exists and remove it if it does
+    if (fs.existsSync('_' + name)) fs.unlinkSync('_' + name);
 
+    // Download started
     emit(self, 'download.start', name);
 
+    // Writestream for the binary file
     var file = fs.createWriteStream('_' + name),
       len = parseInt(res.headers['content-length'], 10),
       current = 0;
 
+    // Pipe any new block to the stream
     res.pipe(file);
-    res.on('data', function(chunk) {
-      //file.write(chunk);
+
+    var dataRecieve = function(chunk) {
       current += chunk.length;
       perc = (100.0 * (current / len)).toFixed(2);
-      emit(self, 'download.update', name, perc);
-    });
+      emit(self, 'download.progress', name, perc);
+    };
+
+    if (self.attrs.progressDebounce) {
+      res.on('data', _.debounce(dataRecieve, self.attrs.progressDebounce));
+    } else {
+      res.on('data', dataRecieve);
+    }
+
     res.on('end', function() {
       file.end();
     });
@@ -398,13 +470,16 @@ var remoteDownloadUpdate = function(name, opc, callback) {
       fs.renameSync('_' + name, name);
       emit(self, 'download.end', name);
 
-      callback();
+      deferred.resolve();
     });
   });
-  reqGet.end();
-  reqGet.on('error', function(e) {
+  request.end();
+  request.on('error', function(e) {
+    deferred.reject();
     emit(self, 'download.error', e);
   });
+
+  return deferred;
 };
 
 /**
@@ -412,14 +487,15 @@ var remoteDownloadUpdate = function(name, opc, callback) {
  * @method extract
  * @param  {String}   name      Path of zip
  * @param  {Boolean}   subfolder If subfolder. (check Adm-zip)
- * @param  {Function} done  Return callback
+ * @return {Promise}
  * @private
  */
-var extract = function(name, subfolder, done) {
+var extract = function(name, subfolder) {
   var admzip = require('adm-zip');
 
   var zip = new admzip(name);
   var zipEntries = zip.getEntries(); // an array of ZipEntry records
+  var deferred = Defer();
 
   if (subfolder) {
     zip.extractAllTo('./', true);
@@ -427,9 +503,8 @@ var extract = function(name, subfolder, done) {
     zip.extractEntryTo(zipEntries[0], './', false, true);
   }
 
-  fs.unlinkSync(name); // delete installed update.
-
-  done();
+  fs.unlink(name, deferred.resolve.bind(deferred));
+  return deferred;
 };
 
 /**

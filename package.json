@@ -1,7 +1,7 @@
 {
   "name": "auto-updater",
   "description": "Automatically updates your client version when is outdated by the repository",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "author": {
     "name": "@Juampi_92",
     "url": "https://github.com/juampi92"
@@ -9,6 +9,7 @@
   "main": "./auto-updater",
   "dependencies": {
     "adm-zip": "*",
+    "node-promise": "^0.5.12",
     "underscore": "^1.8.3"
   },
   "keywords": [
@@ -33,9 +34,7 @@
   },
   "scripts": {
     "test": "mocha --reporter spec tests/"
-  }
-,
-  "version": "0.0.1",
+  },
   "auto-updater": {
     "repo": "juampi92/auto-updater",
     "branch": "v1.0.0"

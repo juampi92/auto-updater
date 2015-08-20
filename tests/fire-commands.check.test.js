@@ -4,7 +4,7 @@ var fs = require('fs');
 var AutoUpdater = require('../auto-updater');
 
 
-describe('Fire Commands', function() {
+describe('Fire Commands: Check', function() {
 
   // CHECK UP-TO-DATE
   describe('Check up-to-date', function() {
