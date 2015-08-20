@@ -33,7 +33,7 @@ describe('Fire Commands', function() {
       instance.fire('check');
     });
 
-    it('should check JSONS', function() {
+    it('should check JSONS and version', function() {
       result.should.be.exactly('check.up-to-date');
       version.should.be.exactly('0.1.0');
     });
@@ -88,12 +88,11 @@ describe('Fire Commands', function() {
       }, null, 2));
     });
 
-    it('should check JSONS', function() {
+    it('should check JSONS and versions', function() {
       result.should.be.exactly('check.out-dated');
       v1.should.be.exactly('0.0.5');
       v2.should.be.exactly('0.0.4');
     });
   });
-
 
 });
