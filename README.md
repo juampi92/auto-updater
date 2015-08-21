@@ -32,7 +32,7 @@ With [npm](http://npmjs.org) do:
 # Public Methods:
 
  * `use ( config )`
- * `on ( event, callback )` Sets the events ([EventEmitter](https://nodejs.org/api/events.html#toc) compatible)
+ * `on ( event, callback )` Sets the events (use like [EventEmitter](https://nodejs.org/api/events.html#toc))
  * `fire ( command )` Fires a command
 
 ## Config
@@ -41,14 +41,14 @@ With [npm](http://npmjs.org) do:
  * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
  * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
  * `contenthost: 'codeload.github.com'` URL of full remote zip
- * `progressDebounce: 0` URL of full remote zip
+ * `progressDebounce: 0` Debounces the 'download.progress' event (0 = disabled)
+ * `devmode: false` Developer Mode. Enhances error messages using console.log
 
 ## Commands
- * `check-dependencies` Returns bool if client has all the remote dependencies. Undefined if they weren't checked yet (need forceCheck first)
- * `diff-dependencies` Returns an array of dependencies (only the names) that dont match
- * `check` Compares the two versions. Triggers: 'git-clone','check-up-to-date','check-out-dated'
- * `download-update` Downloads the update. Triggers: 'update-downloaded','update-not-installed','download-*'
+ * `check` Compares the two versions. Triggers: 'git-clone', 'check.up-to-date', 'check.out-dated'
+ * `download-update` Downloads the update. Triggers: 'update.downloaded', 'update.not-installed','download.*'
  * `force-extract` Extracts (or installs) the update reeplacing old files (it doesnt delete untracked files). Triggers: 'update.extracted'
+ * `diff-dependencies` Returns an array of dependencies (only the names) that dont match. Returns an empty array if there's no difference. Requires the 'check' command first.
 
 Warning: do not run this methods in other order.
 

@@ -153,11 +153,9 @@ AutoUpdater.prototype.use = function(options) {
  * Fire commands
  * @method fire
  * @param  {String} command Name of command
- * @chainable
  */
 AutoUpdater.prototype.fire = function(command) {
-  commands[command].apply(this, _.toArray(arguments).slice(1));
-  return this;
+  return commands[command].apply(this, _.toArray(arguments).slice(1));
 };
 
 /**
@@ -190,6 +188,7 @@ var commands = {
   /**
    * Checks packages versions (local and remote)
    * @method check
+   * @chainable
    */
   'check': function() {
     // first check git if needed
@@ -198,6 +197,8 @@ var commands = {
     loadClientJson.call(this)
       .then(loadRemoteJson.bind(this))
       .then(loaded.bind(this));
+
+    return this;
   },
   /**
    * Downloads the latest zip
@@ -205,14 +206,14 @@ var commands = {
    *   'update.not-installed' if the update exists but it wasn't installed
    *   'update.downloaded' if the update was successfully downloaded
    * @method download-update
+   * @chainable
    */
   'download-update': function() {
     // Validation
     if (!this.jsons.client) {
-      loadClientJson.call(this)
+      return loadClientJson.call(this)
         .then(loadRemoteJson.bind(this))
         .then(commands['download-update'].bind(this));
-      return;
     }
 
     var self = this,
@@ -234,6 +235,7 @@ var commands = {
           self.fire('extract');
         }
       });
+    return this;
   },
   /**
    * Extracts the zip, replacing everything.
@@ -241,23 +243,27 @@ var commands = {
    *   'update.extracted' when the extraction was successful
    *   'end' when the extraction was successful
    * @method extract
+   * @chainable
    */
-  'extract': function() {
+  'extract': function(subfolder) {
     var self = this;
-    extract.call(this, this.updateName, false)
+    extract.call(this, this.updateName, subfolder)
       .then(function() {
         emit(self, 'update.extracted');
         emit(self, 'end');
       });
+    return this;
   },
   /**
-   * Checks agains cache, and if not, calculates
+   * Checks against cache, and if not, calculates
    * @method diff-dependencies
-   * @return {Boolean}
+   * @return {Array}
    */
   'diff-dependencies': function() {
-    if (this.cache.dependencies === undefined) checkDependencies.call(this);
-    return this.cache.dependencies_diff;
+    if (!this.cache.dependencies) {
+      checkDependencies.call(this);
+    }
+    return this.cache.dependencies;
   }
 };
 
@@ -346,11 +352,14 @@ var loadRemoteJson = function() {
  * @private
  */
 var loaded = function() {
-  if (this.jsons.client.version == this.jsons.remote.version) {
-    emit(this, 'check.up-to-date', this.jsons.remote.version);
+  var clientVersion = this.jsons.client.version,
+    remoteVersion = this.jsons.remote.version;
+
+  if (clientVersion === remoteVersion) {
+    emit(this, 'check.up-to-date', remoteVersion);
     emit(this, 'end');
   } else {
-    emit(this, 'check.out-dated', this.jsons.client.version, this.jsons.remote.version);
+    emit(this, 'check.out-dated', clientVersion, remoteVersion);
     if (this.attrs.autoupdate) {
       this.fire('download-update');
     }
@@ -513,24 +522,27 @@ var extract = function(name, subfolder) {
  * @return {Boolean} If they have changed
  * @private
  */
-var checkDependencies = function() { // return Bool
-  if (!this.cache.dependencies) {
-    if (this.jsons.client !== undefined && this.jsons.remote !== undefined) // ret undefined. No idea
-      if (this.jsons.client.dependencies.length != this.jsons.remote.dependencies.length) this.cache.dependencies = false;
-      else {
-        bool = true;
-        this.cache.dependencies_diff = [];
-        for (var key in this.jsons.remote.dependencies) // Itero sobre las remotas. Si tengo demás en cliente, no es critico
-          if (this.jsons.remote.dependencies[key] != this.jsons.client.dependencies[key]) { // Si no existe, tmb error
-            this.cache.dependencies_diff.push(key); // Log the diff
-            bool = false;
-          }
-        this.cache.dependencies = bool;
-      }
+var checkDependencies = function() {
+  var client = this.jsons.client.dependencies,
+    remote = this.jsons.remote.dependencies,
+    cache = this.cache;
+
+  if (!client || !remote) {
+    this.error('Error: you need to check the jsons before checking dependencies', 'dependencies.error');
+    return;
   }
-  return this.cache.dependencies;
+
+  cache.dependencies = [];
+
+  _.each(remote, function(value, key) {
+    // Check that the client has the key, or that the versions are the same
+    if (!client.hasOwnProperty(key) ||
+      value !== client[key]) {
+      // Log the diff
+      cache.dependencies.push(key);
+    }
+  });
+  return (cache.dependencies.length > 0);
 };
-
-
 
 module.exports = AutoUpdater;

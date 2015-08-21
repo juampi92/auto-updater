@@ -15,6 +15,7 @@ describe('Fire Commands: Check', function() {
 
     var result, version;
     beforeEach(function(done) {
+      this.timeout(5000);
       instance.on('error', function(name, e) {
         console.error(e);
         result = 'error';
