@@ -6,7 +6,7 @@ var AutoUpdater = require('../auto-updater');
 describe('Fire Commands: Extract', function() {
 
   var instance = new AutoUpdater({
-    pathToJson: 'tests/assets/',
+    pathToJson: 'test/assets/',
     devmode: true,
     progressDebounce: 0
   });
@@ -27,7 +27,7 @@ describe('Fire Commands: Extract', function() {
       }
     }
   };
-  instance.updateName = 'tests/assets/' + instance.update_dest + '-' + instance.jsons.remote.version;
+  instance.updateName = 'test/assets/' + instance.update_dest + '-' + instance.jsons.remote.version;
 
   it('should copy the update', function(done) {
     this.timeout(3000);
@@ -55,7 +55,7 @@ describe('Fire Commands: Extract', function() {
     instance.fire('extract');
   });
 
-  var fileCreated = 'tests/assets/updatedfile.js';
+  var fileCreated = 'test/assets/updatedfile.js';
 
   it('should have the file', function() {
     fs.existsSync(fileCreated).should.be.exactly(true);

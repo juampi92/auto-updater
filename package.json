@@ -33,7 +33,7 @@
     "should": "^7.0.4"
   },
   "scripts": {
-    "test": "mocha --reporter spec tests/"
+    "test": "mocha --reporter spec test/*.js"
   },
   "auto-updater": {
     "repo": "juampi92/auto-updater",

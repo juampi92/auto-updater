@@ -8,7 +8,7 @@ describe('Fire Commands: Download', function() {
   describe('Download update', function() {
 
     var instance = new AutoUpdater({
-      pathToJson: 'tests/assets/',
+      pathToJson: 'test/assets/',
       devmode: true,
       progressDebounce: 0
     });

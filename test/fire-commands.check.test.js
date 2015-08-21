@@ -9,7 +9,7 @@ describe('Fire Commands: Check', function() {
   // CHECK UP-TO-DATE
   describe('Check up-to-date', function() {
     var instance = new AutoUpdater({
-      pathToJson: '/tests/assets/',
+      pathToJson: '/test/assets/',
       devmode: true
     });
 
@@ -44,13 +44,13 @@ describe('Fire Commands: Check', function() {
   describe('Check out-dated', function() {
 
     var instance2 = new AutoUpdater({
-      pathToJson: 'tests/assets/older/',
+      pathToJson: 'test/assets/older/',
       devmode: true
     });
 
     var result, v1, v2;
     beforeEach(function(done) {
-      var fd = fs.openSync('./tests/assets/older/package.json', 'w');
+      var fd = fs.openSync('./test/assets/older/package.json', 'w');
       fs.writeSync(fd, JSON.stringify({
         'version': '0.0.5',
         'auto-updater': {
@@ -79,7 +79,7 @@ describe('Fire Commands: Check', function() {
     });
 
     afterEach(function() {
-      var fd = fs.openSync('./tests/assets/older/package.json', 'w');
+      var fd = fs.openSync('./test/assets/older/package.json', 'w');
       fs.writeSync(fd, JSON.stringify({
         'version': '0.0.4',
         'auto-updater': {
