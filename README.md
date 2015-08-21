@@ -47,7 +47,7 @@ With [npm](http://npmjs.org) do:
 ## Commands
  * `check` Compares the two versions. Triggers: 'git-clone', 'check.up-to-date', 'check.out-dated'
  * `download-update` Downloads the update. Triggers: 'update.downloaded', 'update.not-installed','download.*'
- * `force-extract` Extracts (or installs) the update reeplacing old files (it doesnt delete untracked files). Triggers: 'update.extracted'
+ * `extract` Extracts (or installs) the update reeplacing old files (it doesnt delete untracked files). Triggers: 'update.extracted'
  * `diff-dependencies` Returns an array of dependencies (only the names) that dont match. Returns an empty array if there's no difference. Requires the 'check' command first.
 
 Warning: do not run this methods in other order.
