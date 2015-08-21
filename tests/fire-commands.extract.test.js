@@ -31,7 +31,7 @@ describe('Fire Commands: Extract', function() {
 
   it('should copy the update', function(done) {
     this.timeout(3000);
-    fs.createReadStream(instance.updateName + '_save.zip')
+    fs.createReadStream(instance.updateName + '_save')
       .pipe(fs.createWriteStream(instance.updateName + '.zip')
         .on('close', function() {
           done();
