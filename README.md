@@ -1,6 +1,9 @@
 # Auto-Updater
+[![Build Status](https://travis-ci.org/juampi92/auto-updater.svg)](https://travis-ci.org/juampi92/auto-updater)
 
 [Node.js](http://nodejs.org/) auto-update plugin.
+
+Compares local package.json with repository package.json and if versions don't match, it downloads the latest zip and extracts it.
 
 # Installation
 	
@@ -11,8 +14,8 @@ With [npm](http://npmjs.org) do:
 # What does it do?
 
  * Compares local version with remote version.
- * If versions dont match, it downloads the repository.
- * It extracts the repository, overwriting the modifies files.
+ * If versions don't match, it downloads the repository.
+ * It extracts the repository, overwriting the modified files.
  * Compares local dependencies with remote dependencies and tells if they don't match.
 
 # Events
