@@ -1,5 +1,5 @@
 # Auto-Updater
-[![Build Status](https://travis-ci.org/juampi92/auto-updater.svg)](https://travis-ci.org/juampi92/auto-updater)
+[![Build Status](https://travis-ci.org/juampi92/auto-updater.svg)](https://travis-ci.org/juampi92/auto-updater)[![Dependencies](https://david-dm.org/juampi92/auto-updater.svg)](https://david-dm.org/juampi92/auto-updater)
 
 [Node.js](http://nodejs.org/) auto-update plugin.
 
