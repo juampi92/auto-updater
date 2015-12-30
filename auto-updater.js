@@ -192,9 +192,7 @@ var commands = {
    */
   'check': function() {
     // first check git if needed
-    if (this.attrs.checkgit && checkGit.call(this)){
-      return;
-    }
+    if (this.attrs.checkgit && checkGit.call(this)) return;
 
     loadClientJson.call(this)
       .then(loadRemoteJson.bind(this))
@@ -290,24 +288,6 @@ var parsePackageJson = function(data) {
   return filtered;
 };
 
-/**
- * Fires:
- *   'git-clone' if it has a .git folder
- * @method _checkGit
- * @return {Boolean}  Has git folder
- * @private
- */
-var checkGit = function() {
-  if (this.cache.git === undefined) {
-
-    this.cache.git = fs.existsSync('.git');
-
-    if (this.cache.git === true) {
-      this.emit('git-clone');
-    }
-  }
-  return this.cache.git;
-};
 /**
  * Reads the package.json
  * @method loadClientJson
