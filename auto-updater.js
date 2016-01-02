@@ -29,86 +29,118 @@ var AutoUpdater = function(config) {
 util.inherits(AutoUpdater, EventEmitter);
 AutoUpdater.prototype.emit = null;
 
-// enum to provide all auto-updater's events to outer scope, just to avoid their copy-pasting
+/**
+ * Enum of auto-updater events, check a more concrete description of each event below
+ * @property Events
+ * @type {Object}
+ */
 AutoUpdater.Events = {
+  /**
+   * The user has a git clone. Recommend use the "git pull" command
+   * @event git-clone
+   */
   GIT_CLONE: "git-clone",
+  /**
+   * Versions match
+   * @event check.up-to-date
+   * @param {String} version Version number
+   */
   CHECK_UP_TO_DATE: "check.up-to-date",
+
+  /**
+   * Versions don't match
+   * @event check.out-dated
+   * @param {String} v_old Old (local) version number
+   * @param {String} v New version number
+   */
   CHECK_OUT_DATED: "check.out-dated",
+
+  /**
+   * Update downloaded in the machine
+   * @event update.downloaded
+   */
+
   UPDATE_DOWNLOADED: "update.downloaded",
+  /**
+   * Update was already in the dir, so it wasnt installed
+   * @event update.not-installed
+   */
+
   UPDATE_NOT_INSTALLED: "update.not-installed",
+  /**
+   * The update has been extracted correctly.
+   * @event update.extracted
+   */
+
   UPDATE_EXTRACTED: "update.extracted",
+
+
+  /**
+   * The download has started
+   * @event download.start
+   * @param {String} name Name of the update
+   */
+
   DOWNLOAD_START: "download.start",
+
+
+  /**
+   * The download has been updated. New percentage
+   * @event download.progress
+   * @param {String} name Name of the update
+   * @param {Number} percent Percent of completion
+   */
+
   DOWNLOAD_PROGRESS: "download.progress",
+
+
+  /**
+   * The download has ended
+   * @event download.end
+   * @param {String} name Name of the update
+   */
+
   DOWNLOAD_END: "download.end",
+
+
+
+  /**
+   * Something happened to the download
+   * @event download.error
+   * @param {Error} e
+   */
   DOWNLOAD_ERROR: "download.error",
+
+  /**
+   * Something happened during extraction process
+   * @event extract.error
+   * @param {Error} e
+   */
+  EXTRACT_ERROR: "extract.error",
+
+  /**
+   * Called when all is over
+   * ( along with 'check.up-to-date' if there are no updates, or with 'update.extracted' if it was installed )
+   * @event end
+   */
   END: "end",
+
+  /**
+   * Called when something unexpected happened
+   * @event error
+   */
   ERROR: "error"
 };
 
 
-/**
- * The user has a git clone. Recommend use the "git pull" command
- * @event git-clone
- */
 
-/**
- * Versions match
- * @event check.up-to-date
- * @param {String} version Version number
- */
 
-/**
- * Versions don't match
- * @event check.out-dated
- * @param {String} v_old Old (local) version number
- * @param {String} v New version number
- */
 
-/**
- * Update downloaded in the machine
- * @event update.downloaded
- */
 
-/**
- * Update was already in the dir, so it wasnt installed
- * @event update.not-installed
- */
 
-/**
- * The update has been extracted correctly.
- * @event update.extracted
- */
 
-/**
- * The download has started
- * @event download.start
- * @param {String} name Name of the update
- */
 
-/**
- * The download has been updated. New percentage
- * @event download.progress
- * @param {String} name Name of the update
- * @param {Number} percent Percent of completion
- */
 
-/**
- * The download has ended
- * @event download.end
- * @param {String} name Name of the update
- */
-
-/**
- * Something happened to the download
- * @event download.error
- * @param {Error} e
- */
-
-/**
- * Called when all is over
- * ( along with 'check.up-to-date' if there are no updates, or with 'update.extracted' if it was installed )
- * @event end
- */
 
 AutoUpdater.defaults = {
   /**
@@ -492,7 +524,7 @@ var remoteDownloadUpdate = function(name, opc) {
     // Writestream for the binary file
     var file = fs.createWriteStream('_' + name),
       // sometimes sites will just no provide us content-length header, if so we can track progress in bytes instead of %
-      len = res.headers['content-length'] !== undefined ? parseInt(res.headers['content-length'], 10) : undefined,
+      len = res.headers['content-length'] !== undefined ? parseInt(res .headers['content-length'], 10) : undefined,
       current = 0;
 
     // Pipe any new block to the stream
@@ -501,7 +533,7 @@ var remoteDownloadUpdate = function(name, opc) {
     var dataRecieve = function(chunk) {
       current += chunk.length;
       var value;
-      
+
       if(len){
         value = (100.0 * (current / len)).toFixed(2).toString() + "%";
       }
@@ -567,7 +599,7 @@ var extract = function(name, subfolder) {
   }
   catch(err){
     callback = deferred.reject.bind(deferred);
-    emit(self, AutoUpdater.Events.ERROR, err);
+    emit(self, AutoUpdater.Events.EXTRACT_ERROR, err);
   }
   finally {
     fs.unlink(name, callback);
