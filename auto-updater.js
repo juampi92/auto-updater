@@ -535,10 +535,10 @@ var remoteDownloadUpdate = function(name, opc) {
       var value;
 
       if(len){
-        value = (100.0 * (current / len)).toFixed(2).toString() + "%";
+        value = (100.0 * (current / len)).toFixed(2).toString() + '%';
       }
       else{
-        value = current;
+        value = current + ' bytes';
       }
 
       emit(self, AutoUpdater.Events.DOWNLOAD_PROGRESS, name, value);
