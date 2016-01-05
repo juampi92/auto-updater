@@ -353,7 +353,7 @@ var checkGit = function() {
     this.cache.git = fs.existsSync('.git');
 
     if (this.cache.git === true) {
-      this.emit(AutoUpdater.Events.GIT_CLONE);
+      emit(AutoUpdater.Events.GIT_CLONE);
     }
   }
   return this.cache.git;
