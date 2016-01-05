@@ -1,4 +1,5 @@
 var fs = require('fs'),
+  admzip = require('adm-zip'),
 
   util = require('util'),
   path = require('path').posix,
@@ -29,68 +30,117 @@ util.inherits(AutoUpdater, EventEmitter);
 AutoUpdater.prototype.emit = null;
 
 /**
- * The user has a git clone. Recommend use the "git pull" command
- * @event git-clone
+ * Enum of auto-updater events, check a more concrete description of each event below
+ * @property Events
+ * @type {Object}
  */
+AutoUpdater.Events = {
+  /**
+   * The user has a git clone. Recommend use the "git pull" command
+   * @event git-clone
+   */
+  GIT_CLONE: "git-clone",
+  /**
+   * Versions match
+   * @event check.up-to-date
+   * @param {String} version Version number
+   */
+  CHECK_UP_TO_DATE: "check.up-to-date",
 
-/**
- * Versions match
- * @event check.up-to-date
- * @param {String} version Version number
- */
+  /**
+   * Versions don't match
+   * @event check.out-dated
+   * @param {String} v_old Old (local) version number
+   * @param {String} v New version number
+   */
+  CHECK_OUT_DATED: "check.out-dated",
 
-/**
- * Versions don't match
- * @event check.out-dated
- * @param {String} v_old Old (local) version number
- * @param {String} v New version number
- */
+  /**
+   * Update downloaded in the machine
+   * @event update.downloaded
+   */
 
-/**
- * Update downloaded in the machine
- * @event update.downloaded
- */
+  UPDATE_DOWNLOADED: "update.downloaded",
+  /**
+   * Update was already in the dir, so it wasnt installed
+   * @event update.not-installed
+   */
 
-/**
- * Update was already in the dir, so it wasnt installed
- * @event update.not-installed
- */
+  UPDATE_NOT_INSTALLED: "update.not-installed",
+  /**
+   * The update has been extracted correctly.
+   * @event update.extracted
+   */
 
-/**
- * The update has been extracted correctly.
- * @event update.extracted
- */
+  UPDATE_EXTRACTED: "update.extracted",
 
-/**
- * The download has started
- * @event download.start
- * @param {String} name Name of the update
- */
 
-/**
- * The download has been updated. New percentage
- * @event download.progress
- * @param {String} name Name of the update
- * @param {Number} percent Percent of completion
- */
+  /**
+   * The download has started
+   * @event download.start
+   * @param {String} name Name of the update
+   */
 
-/**
- * The download has ended
- * @event download.end
- * @param {String} name Name of the update
- */
+  DOWNLOAD_START: "download.start",
 
-/**
- * Something happened to the download
- * @event download.error
- * @param {Error} e
- */
 
-/**
- * Called when all is over
- * ( along with 'check.up-to-date' if there are no updates, or with 'update.extracted' if it was installed )
- * @event end
- */
+  /**
+   * The download has been updated. New percentage
+   * @event download.progress
+   * @param {String} name Name of the update
+   * @param {Number} percent Percent of completion
+   */
+
+  DOWNLOAD_PROGRESS: "download.progress",
+
+
+  /**
+   * The download has ended
+   * @event download.end
+   * @param {String} name Name of the update
+   */
+
+  DOWNLOAD_END: "download.end",
+
+
+
+  /**
+   * Something happened to the download
+   * @event download.error
+   * @param {Error} e
+   */
+  DOWNLOAD_ERROR: "download.error",
+
+  /**
+   * Something happened during extraction process
+   * @event extract.error
+   * @param {Error} e
+   */
+  EXTRACT_ERROR: "extract.error",
+
+  /**
+   * Called when all is over
+   * ( along with 'check.up-to-date' if there are no updates, or with 'update.extracted' if it was installed )
+   * @event end
+   */
+  END: "end",
+
+  /**
+   * Called when something unexpected happened
+   * @event error
+   */
+  ERROR: "error"
+};
+
+
+
+
+
+
+
+
+
+
 
 AutoUpdater.defaults = {
   /**
@@ -171,7 +221,7 @@ AutoUpdater.prototype.error = function(message, code, e) {
   if (this.attrs.devmode) {
     console.error(message);
   }
-  emit(this, 'error', code, e || {});
+  emit(this, AutoUpdater.Events.ERROR, code, e || {});
 };
 
 /**
@@ -229,9 +279,9 @@ var commands = {
       })
       .then(function(existed) {
         if (existed === true)
-          emit(self, 'update.not-installed');
+          emit(self, AutoUpdater.Events.UPDATE_NOT_INSTALLED);
         else
-          emit(self, 'update.downloaded');
+          emit(self, AutoUpdater.Events.UPDATE_DOWNLOADED);
 
         if (self.attrs.autoupdate) {
           self.fire('extract');
@@ -251,8 +301,8 @@ var commands = {
     var self = this;
     extract.call(this, this.updateName, subfolder)
       .then(function() {
-        emit(self, 'update.extracted');
-        emit(self, 'end');
+        emit(self, AutoUpdater.Events.UPDATE_EXTRACTED);
+        emit(self, AutoUpdater.Events.END);
       });
     return this;
   },
@@ -303,7 +353,7 @@ var checkGit = function() {
     this.cache.git = fs.existsSync('.git');
 
     if (this.cache.git === true) {
-      this.emit('git-clone');
+      emit(AutoUpdater.Events.GIT_CLONE);
     }
   }
   return this.cache.git;
@@ -376,10 +426,10 @@ var loaded = function() {
     remoteVersion = this.jsons.remote.version;
 
   if (clientVersion === remoteVersion) {
-    emit(this, 'check.up-to-date', remoteVersion);
-    emit(this, 'end');
+    emit(this, AutoUpdater.Events.CHECK_UP_TO_DATE, remoteVersion);
+    emit(this, AutoUpdater.Events.END);
   } else {
-    emit(this, 'check.out-dated', clientVersion, remoteVersion);
+    emit(this, AutoUpdater.Events.CHECK_OUT_DATED, clientVersion, remoteVersion);
     if (this.attrs.autoupdate) {
       this.fire('download-update');
     }
@@ -469,11 +519,12 @@ var remoteDownloadUpdate = function(name, opc) {
     if (fs.existsSync('_' + name)) fs.unlinkSync('_' + name);
 
     // Download started
-    emit(self, 'download.start', name);
+    emit(self, AutoUpdater.Events.DOWNLOAD_START, name);
 
     // Writestream for the binary file
     var file = fs.createWriteStream('_' + name),
-      len = parseInt(res.headers['content-length'], 10),
+      // sometimes sites will just no provide us content-length header, if so we can track progress in bytes instead of %
+      len = res.headers['content-length'] !== undefined ? parseInt(res .headers['content-length'], 10) : undefined,
       current = 0;
 
     // Pipe any new block to the stream
@@ -481,8 +532,16 @@ var remoteDownloadUpdate = function(name, opc) {
 
     var dataRecieve = function(chunk) {
       current += chunk.length;
-      perc = (100.0 * (current / len)).toFixed(2);
-      emit(self, 'download.progress', name, perc);
+      var value;
+
+      if(len){
+        value = (100.0 * (current / len)).toFixed(2).toString() + '%';
+      }
+      else{
+        value = current + ' bytes';
+      }
+
+      emit(self, AutoUpdater.Events.DOWNLOAD_PROGRESS, name, value);
     };
 
     if (self.attrs.progressDebounce) {
@@ -497,7 +556,7 @@ var remoteDownloadUpdate = function(name, opc) {
 
     file.on('finish', function() {
       fs.renameSync('_' + name, name);
-      emit(self, 'download.end', name);
+      emit(self, AutoUpdater.Events.DOWNLOAD_END, name);
 
       deferred.resolve();
     });
@@ -505,7 +564,7 @@ var remoteDownloadUpdate = function(name, opc) {
   request.end();
   request.on('error', function(e) {
     deferred.reject();
-    emit(self, 'download.error', e);
+    emit(self, AutoUpdater.Events.DOWNLOAD_ERROR, e);
   });
 
   return deferred;
@@ -520,19 +579,32 @@ var remoteDownloadUpdate = function(name, opc) {
  * @private
  */
 var extract = function(name, subfolder) {
-  var admzip = require('adm-zip');
+  var self = this,
+      deferred = Defer(),
+      callback;
 
-  var zip = new admzip(name);
-  var zipEntries = zip.getEntries(); // an array of ZipEntry records
-  var deferred = Defer();
+  // downloaded archive can be corrupted, if so we need to inform our client and clean up it as well.
+  try
+  {
+    var zip = new admzip(name);
+    var zipEntries = zip.getEntries(); // an array of ZipEntry records
 
-  if (subfolder) {
-    zip.extractAllTo('./', true);
-  } else {
-    zip.extractEntryTo(zipEntries[0], './', false, true);
+    if (subfolder) {
+      zip.extractAllTo('./', true);
+    } else {
+      zip.extractEntryTo(zipEntries[0], './', false, true);
+    }
+
+    callback = deferred.resolve.bind(deferred);
+  }
+  catch(err){
+    callback = deferred.reject.bind(deferred);
+    emit(self, AutoUpdater.Events.EXTRACT_ERROR, err);
+  }
+  finally {
+    fs.unlink(name, callback);
   }
 
-  fs.unlink(name, deferred.resolve.bind(deferred));
   return deferred;
 };
 
