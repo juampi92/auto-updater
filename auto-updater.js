@@ -303,7 +303,7 @@ var checkGit = function() {
     this.cache.git = fs.existsSync('.git');
 
     if (this.cache.git === true) {
-      this.emit('git-clone');
+      emit(this, 'git-clone');
     }
   }
   return this.cache.git;
