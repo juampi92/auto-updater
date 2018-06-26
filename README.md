@@ -41,7 +41,7 @@ With [npm](http://npmjs.org) do:
 ## Config
  * `pathToJson: ''` from repo main folder to package.json (only subfolders. Can't go backwards)
  * `autoupdate: false` if true, all stages run one after the other. Else, you need to force the stages with the force methods
- * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the proyect.
+ * `checkgit: true` Checks if the .git folder exists, so its a dev and doesnt download the project.
  * `jsonhost: 'raw.githubusercontent.com'` URL of raw remote package.json
  * `contenthost: 'codeload.github.com'` URL of full remote zip
  * `progressDebounce: 0` Debounces the 'download.progress' event (0 = disabled)
@@ -63,7 +63,7 @@ Warning: do not run this methods in other order.
 		"branch":"master"
 	}
 
-That segment must be added to the proyect (local). It is critical that the package.json of the app you are using has a version field (so it can be compared with the remote package.json stored on github), and the auto-updater field, so it knows where to get the remote data.
+That segment must be added to the project (local). It is critical that the package.json of the app you are using has a version field (so it can be compared with the remote package.json stored on github), and the auto-updater field, so it knows where to get the remote data.
 
 # Example
 ```javascript
